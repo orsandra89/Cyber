@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test App</title>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+    <style>
+        .area {
+            width: 500px;
+            height: auto;
+            display: flex;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+
+<body id="app" v-cloak>
+    <div class="container">
+        <h3>Test app</h3>
+        <form @submit="submitForm">
+            <input required placeholder="Enter user login" type="text" name="text" :value="store.userLogin"
+                @input="store.updateUserLogin($event.target.value)">
+            <br>
+            <button type="submit"> Get info about</button>
+        </form>
+        <p v-if="loadingUserRepos">
+            Loading...
+        </p>
+        <div v-else>
+            <p v-if="store.userResponse.name !== ''">
+                {% raw %}
+                {{ store.userResponse.name }}
+                {% endraw %}
+            </p>
+            <ul v-if="store.userResponse.repos.length > 0">
+                <li v-for="(r, i) in store.userResponse.repos" :key="i">
+                    {% raw %}
+                    {{ r }}
+                    {% endraw %}
+                </li>
+            </ul>
+        </div>
+        <p v-if="!store.userResponse && store.userResponse.repos.length === 0">
+            No repos found... 😭
+        </p>
+        <pre class="area" v-if="store.errors">
+            {% raw %}
+                {{ store.errors }}
+            {% endraw %}
+        </pre>
+    </div>
+    <script type="module">
+        import { createApp, reactive } from 'https://unpkg.com/petite-vue?module';
+
+        const userResponseContract = (name = "", repos = []) => ({ name, repos });
+
+        const store = reactive({
+            userLogin: "",
+            updateUserLogin(value) {
+                this.userLogin = value;
+            },
+            userResponse: null,
+            errors: null
+        });
+
+        createApp({
+            store,
+            loadingUserRepos: false,
+            async submitForm(e) {
+                e.preventDefault();
+                store.userResponse = userResponseContract();
+                store.errors = null;
+
+                try {
+                    const response = await this.getUserResponse(store.userLogin);
+                    const name = response.data?.logins?.name || store.userLogin;
+                    const repos = response.data?.logins?.repos || [];
+                    const errors = response?.errors || null;
+
+                    if (errors) {
+                        store.errors = errors;
+                        return errors;
+                    }
+
+                    store.userResponse = userResponseContract(name, repos);
+
+                    return repos;
+                } catch (e) {
+                    store.repos = e;
+                    return;
+                }
+            },
+            getUserResponse(login) {
+                const operationName = "test";
+                const query = (_operationName, _login) => `query ${_operationName} { logins( login: "${_login}" ) { name repos } }`;
+
+                const options = {
+                    method: "post",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        operationName,
+                        query: query(operationName, login)
+                    })
+                };
+
+                this.loadingUserRepos = true;
+                return fetch(`http://localhost:8000/graphql`, options)
+                    .then(res => res.json())
+                    .finally(() => {
+                        this.loadingUserRepos = false;
+                    });
+            },
+        }).mount("#app");
+    </script>
+</body>
+
+</html>
