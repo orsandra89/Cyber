@@ -110,7 +110,7 @@
                 };
 
                 this.loadingUserRepos = true;
-                return fetch(`http://localhost:8000/graphql`, options)
+                return fetch(`/graphql`, options)
                     .then(res => res.json())
                     .finally(() => {
                         this.loadingUserRepos = false;

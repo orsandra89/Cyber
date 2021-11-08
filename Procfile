@@ -1,2 +1,2 @@
-web: gunicorn test:app
-api: strawberry server schema
+web: gunicorn main:app
+api: strawberry server api.schema
